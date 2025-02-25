@@ -2,7 +2,7 @@
 WSGI entry point for the Legal Linguistic Comparator application.
 """
 
-from flask import Flask, request, jsonify, Response
+from app import create_app
 from cachelib import SimpleCache
 from app.analyzer.contract_analyzer import ContractAnalyzer
 import logging
@@ -18,8 +18,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Initialize Flask app with optimized settings
-app = Flask(__name__)
+app = create_app()
 app.config['JSON_SORT_KEYS'] = False  # Preserve JSON order for faster responses
 app.config['PROPAGATE_EXCEPTIONS'] = True
 app.config['PREFERRED_URL_SCHEME'] = 'http'
