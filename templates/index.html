@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Legal Contract Analyzer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Legal Contract Analyzer</a>
+        </div>
+    </nav>
+
+    <div class="container-fluid main-container">
+        <!-- Editor Panel -->
+        <div class="editor-panel">
+            <div class="editor-header">
+                <h5>Contract Text</h5>
+                <div class="editor-controls">
+                    <button class="btn btn-outline-primary btn-sm" id="clearBtn">
+                        <i class="bi bi-trash"></i> Clear
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" id="pasteBtn">
+                        <i class="bi bi-clipboard"></i> Paste
+                    </button>
+                </div>
+            </div>
+            <textarea id="contractText" class="form-control editor-textarea" 
+                      placeholder="Enter or paste your contract text here for analysis..."></textarea>
+        </div>
+
+        <!-- Analysis Controls -->
+        <div class="analysis-controls">
+            <button class="btn btn-primary btn-lg" id="analyzeBtn">
+                <i class="bi bi-search"></i> Analyze Contract
+            </button>
+        </div>
+
+        <!-- Results Section -->
+        <div class="results-section" id="resultsSection" style="display: none;">
+            <!-- Overall Score -->
+            <div class="overall-score-section">
+                <div class="score-circle">
+                    <div class="score-number" id="overallScore">-</div>
+                    <div class="score-label">Overall Score</div>
+                </div>
+            </div>
+
+            <!-- Detailed Analysis -->
+            <div class="analysis-details">
+                <h4>Detailed Analysis</h4>
+                <div class="row" id="analysisCategories">
+                    <!-- Categories will be dynamically inserted here -->
+                </div>
+            </div>
+
+            <!-- Recommendations -->
+            <div class="recommendations-section">
+                <h4>Recommendations</h4>
+                <ul class="recommendations-list" id="recommendationsList">
+                    <!-- Recommendations will be dynamically inserted here -->
+                </ul>
+            </div>
+
+            <!-- Export Controls -->
+            <div class="export-controls">
+                <button class="btn btn-outline-secondary" id="exportResults">
+                    <i class="bi bi-download"></i> Export Analysis
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
