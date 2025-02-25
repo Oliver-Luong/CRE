@@ -10,6 +10,7 @@ import string
 import numpy as np
 from flask import Flask, render_template, request, jsonify
 from difflib import SequenceMatcher
+from app.analyzer.scoring_models import ContractScorer
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -20,6 +21,9 @@ nltk.download('stopwords')
 
 # Load SpaCy language model
 nlp = spacy.load('en_core_web_sm')
+
+# Initialize the contract scorer
+contract_scorer = ContractScorer()
 
 # Preprocessing function
 def preprocess_text(text):
@@ -81,28 +85,87 @@ legal_jargon = {
 # Add structure analysis
 def analyze_contract_structure(text):
     """
-    Analyzes the structural elements of a contract.
-    Returns a score based on presence of key contract sections.
+    Analyzes the structural elements and legal parameters of a contract.
+    Returns a detailed analysis of various legal aspects.
     """
-    key_sections = {
-        'parties': ['between', 'party', 'parties'],
-        'recitals': ['whereas', 'background', 'recitals'],
-        'definitions': ['means', 'defined', 'definitions'],
-        'obligations': ['shall', 'must', 'agrees to'],
-        'term': ['term', 'duration', 'period'],
-        'termination': ['terminate', 'termination', 'end'],
-        'governing_law': ['govern', 'jurisdiction', 'applicable law'],
-        'signatures': ['signed', 'executed', 'agreed']
+    # Define key sections and their indicators with weights
+    legal_parameters = {
+        'assent_mutuality': {
+            'keywords': [
+                'offer', 'accept', 'agree', 'mutual', 'consent', 'meeting of minds', 'intention',
+                'parties agree', 'hereby agrees', 'mutual understanding'
+            ],
+            'weight': 0.15
+        },
+        'definiteness_completeness': {
+            'keywords': [
+                'price', 'duration', 'scope', 'duties', 'obligations', 'terms', 'conditions',
+                'payment terms', 'delivery schedule', 'performance metrics', 'specifications'
+            ],
+            'weight': 0.15
+        },
+        'consideration_bargain': {
+            'keywords': [
+                'consideration', 'exchange', 'payment', 'compensation', 'value', 'benefit',
+                'detriment', 'in exchange for', 'in return for', 'mutual promises'
+            ],
+            'weight': 0.10
+        },
+        'integration_consistency': {
+            'keywords': [
+                'entire agreement', 'integration', 'merger', 'complete agreement', 'final agreement',
+                'supersedes', 'prior agreements', 'sole agreement', 'complete understanding'
+            ],
+            'weight': 0.10
+        },
+        'modification_termination': {
+            'keywords': [
+                'amendment', 'modify', 'terminate', 'revoke', 'cancel', 'waiver',
+                'termination rights', 'modification procedure', 'notice period'
+            ],
+            'weight': 0.10
+        },
+        'risk_remedies': {
+            'keywords': [
+                'damages', 'breach', 'arbitration', 'mediation', 'dispute', 'force majeure',
+                'indemnification', 'liability', 'limitation of liability', 'remedies'
+            ],
+            'weight': 0.15
+        },
+        'compliance_standards': {
+            'keywords': [
+                'law', 'regulation', 'statute', 'compliance', 'ucc', 'legal', 'jurisdiction',
+                'governing law', 'applicable law', 'regulatory requirements'
+            ],
+            'weight': 0.15
+        },
+        'language_clarity': {
+            'keywords': [
+                'defined', 'means', 'shall mean', 'refers to', 'interpretation',
+                'definitions', 'defined terms', 'construction', 'herein'
+            ],
+            'weight': 0.10
+        }
+    }
+
+    # Use the new scoring system
+    analysis_results = contract_scorer.evaluate_contract(text, legal_parameters)
+    
+    # Format the results for the existing API
+    formatted_results = {
+        'score': analysis_results['total_score'],
+        'details': {
+            param: {
+                'score': details['score'],
+                'status': 'Present' if details['score'] > 70 else 'Missing or Insufficient',
+                'analysis': details['details']
+            }
+            for param, details in analysis_results.items()
+            if param != 'total_score'
+        }
     }
     
-    doc = nlp(text.lower())
-    sections_found = 0
-    
-    for section, keywords in key_sections.items():
-        if any(keyword in doc.text for keyword in keywords):
-            sections_found += 1
-    
-    return (sections_found / len(key_sections)) * 100
+    return formatted_results
 
 def analyze_readability(text):
     """
@@ -122,26 +185,34 @@ def analyze_readability(text):
     return max(0, 100 - readability_score)
 
 # Update the final score calculation
-def calculate_final_score(similarity_score, jargon_density, num_phrases, structure_score, readability_score):
+def calculate_final_score(similarity_score, jargon_density, num_phrases, structure_analysis, readability_score):
     """
     Combines all metrics into a weighted final score with error handling.
+    All input scores should be on a 0-100 scale.
     """
     try:
+        # Normalize jargon_density to a 0-100 scale where lower density is better
+        normalized_jargon_score = max(0, 100 - jargon_density * 2)  # * 2 because density over 50% is very high
+        
+        # Extract structure score from detailed analysis
+        structure_score = structure_analysis['score']
+        
         weights = {
-            'similarity': 0.3,
-            'jargon': 0.2,
-            'phrases': 0.1,
-            'structure': 0.25,
-            'readability': 0.15
+            'similarity': 0.15,  # Reduced weight to accommodate new parameters
+            'jargon': 0.10,
+            'readability': 0.15,
+            'structure': 0.60,  # Increased weight for legal parameters
         }
         
-        return (
+        final_score = (
             weights['similarity'] * similarity_score +
-            weights['jargon'] * jargon_density +
-            weights['phrases'] * min(100, num_phrases * 5) +  # Cap phrase contribution
-            weights['structure'] * structure_score +
-            weights['readability'] * readability_score
+            weights['jargon'] * normalized_jargon_score +
+            weights['readability'] * readability_score +
+            weights['structure'] * structure_score
         )
+        
+        # Ensure final score is between 0 and 100
+        return max(0, min(100, final_score))
     except Exception as e:
         print(f"Error calculating final score: {e}")
         return 0

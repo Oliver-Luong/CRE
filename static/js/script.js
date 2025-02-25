@@ -53,8 +53,10 @@ document.addEventListener('DOMContentLoaded', function() {
         analyzeBtn.disabled = true;
         analyzeBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Analyzing...';
         errorAlert.style.display = 'none';
+        resultsSection.style.display = 'none';
 
         try {
+            console.log('Sending analysis request...');
             const response = await fetch('/analyze', {
                 method: 'POST',
                 headers: {
@@ -63,23 +65,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify({ text: text })
             });
 
+            console.log('Received response:', response.status);
             const data = await response.json();
+            console.log('Response data:', data);
 
             if (!response.ok) {
-                throw new Error(data.error || data.details || 'Failed to analyze contract');
+                const errorMessage = data.error || data.details || 'Failed to analyze contract';
+                console.error('Server error:', errorMessage);
+                throw new Error(errorMessage);
             }
 
             if (data.error) {
+                console.error('Analysis error:', data.error);
                 throw new Error(data.error);
             }
 
+            // Check if we have valid analysis data
+            if (!data.score || !data.analysis || !data.recommendations) {
+                console.error('Invalid analysis results:', data);
+                throw new Error('Invalid analysis results received from server');
+            }
+
+            console.log('Analysis successful, displaying results...');
             displayResults(data);
             resultsSection.style.display = 'block';
             exportBtn.style.display = 'block';
 
         } catch (error) {
             console.error('Analysis error:', error);
-            showError(error.message || 'Failed to analyze contract. Please try again.');
+            showError(error.message);
         } finally {
             // Reset button state
             analyzeBtn.disabled = false;
@@ -90,27 +104,52 @@ document.addEventListener('DOMContentLoaded', function() {
     function displayResults(data) {
         // Display overall score
         overallScore.textContent = `${data.score}`;
-        overallScore.className = `display-1 ${getScoreClass(data.score)}`;
+        overallScore.className = `score-number ${getScoreClass(data.score)}`;
 
         // Clear previous results
         analysisCategories.innerHTML = '';
         recommendationsList.innerHTML = '';
 
-        // Display category scores and details
-        for (const [category, analysis] of Object.entries(data.analysis)) {
-            const categoryDiv = document.createElement('div');
-            categoryDiv.className = 'mb-4';
-            categoryDiv.innerHTML = `
-                <h4>${category}</h4>
-                <div class="d-flex align-items-center mb-2">
-                    <div class="score-badge ${getScoreClass(analysis.score)}">${analysis.score}</div>
-                    <div class="ms-3">
-                        <p class="mb-1"><strong>Details:</strong> ${analysis.details}</p>
-                        <p class="mb-0"><strong>Key Findings:</strong> ${JSON.stringify(analysis.findings, null, 2)}</p>
+        // Create analysis categories HTML
+        const categories = {
+            'Similarity': data.analysis.similarity,
+            'Legal Jargon': data.analysis.jargon_density,
+            'Structure': data.analysis.structure,
+            'Readability': data.analysis.readability
+        };
+
+        // Display category scores
+        for (const [category, score] of Object.entries(categories)) {
+            if (score !== undefined) {
+                const categoryDiv = document.createElement('div');
+                categoryDiv.className = 'col-md-6 mb-4';
+                categoryDiv.innerHTML = `
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">${category}</h5>
+                            <div class="d-flex align-items-center">
+                                <div class="score-badge ${getScoreClass(score)}">${score}%</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                analysisCategories.appendChild(categoryDiv);
+            }
+        }
+
+        // Display key phrases if available
+        if (data.analysis.key_phrases && data.analysis.key_phrases.length > 0) {
+            const phrasesDiv = document.createElement('div');
+            phrasesDiv.className = 'col-12 mb-4';
+            phrasesDiv.innerHTML = `
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Key Phrases</h5>
+                        <p class="card-text">${data.analysis.key_phrases.join(', ')}</p>
                     </div>
                 </div>
             `;
-            analysisCategories.appendChild(categoryDiv);
+            analysisCategories.appendChild(phrasesDiv);
         }
 
         // Display recommendations
@@ -150,13 +189,11 @@ document.addEventListener('DOMContentLoaded', function() {
         text += 'Category Analysis\n';
         text += '----------------\n';
         for (const categoryDiv of analysisCategories.children) {
-            const title = categoryDiv.querySelector('h4').textContent;
+            const title = categoryDiv.querySelector('h5').textContent;
             const score = categoryDiv.querySelector('.score-badge').textContent;
-            const details = categoryDiv.querySelector('p').textContent;
             
             text += `\n${title}\n`;
             text += `Score: ${score}\n`;
-            text += `${details}\n`;
         }
         
         text += '\nRecommendations\n';

@@ -4,7 +4,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
 build/
 develop-eggs/
 dist/
@@ -23,11 +22,8 @@ wheels/
 
 # Virtual Environment
 venv/
+env/
 ENV/
-
-# Environment Variables
-.env
-.env.*
 
 # IDE
 .idea/
@@ -39,13 +35,22 @@ ENV/
 *.log
 
 # Local development
-instance/
-uploads/
-Results/
-Sample Documents/
-Sample Documents - Copy/
-Test Documents/
+.env
+.env.local
+.env.*.local
 
-# System Files
+# Cache
+.cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Model files
+*.pkl
+*.h5
+*.pt
+*.pth
+
+# Misc
 .DS_Store
 Thumbs.db

@@ -1,0 +1,46 @@
+CONSULTING SERVICES AGREEMENT
+
+This Consulting Services Agreement (the "Agreement") is made and entered into as of February 25, 2025, by and between:
+
+ABC Consulting LLC ("Consultant")
+123 Business Ave
+San Francisco, CA 94105
+
+and
+
+XYZ Corporation ("Client")
+456 Corporate Blvd
+New York, NY 10001
+
+1. SERVICES
+Consultant shall provide professional consulting services (the "Services") as described in Exhibit A, attached hereto and incorporated by reference.
+
+2. COMPENSATION
+Client shall pay Consultant a fee of $150 per hour for Services rendered. Consultant shall invoice Client monthly, and payment shall be due within 30 days of invoice date.
+
+3. TERM AND TERMINATION
+This Agreement shall commence on the date first written above and continue for a period of 12 months. Either party may terminate this Agreement upon 30 days written notice.
+
+4. CONFIDENTIALITY
+Consultant shall maintain the confidentiality of all proprietary information disclosed by Client and shall not disclose such information to any third party without Client's prior written consent.
+
+5. INTELLECTUAL PROPERTY
+All work product developed by Consultant under this Agreement shall be the sole and exclusive property of Client.
+
+6. LIABILITY
+Consultant's liability under this Agreement shall be limited to the amount of fees paid by Client.
+
+7. GOVERNING LAW
+This Agreement shall be governed by and construed in accordance with the laws of the State of California.
+
+IN WITNESS WHEREOF, the parties have executed this Agreement as of the date first above written.
+
+ABC Consulting LLC
+By: _________________
+Name: John Smith
+Title: Managing Director
+
+XYZ Corporation
+By: _________________
+Name: Jane Doe
+Title: CEO

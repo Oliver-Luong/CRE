@@ -32,24 +32,61 @@ def analyze():
         similarity_score = compute_similarity(preprocessed_repository, preprocessed_input)
         jargon_density = calculate_jargon_density(preprocessed_input, legal_jargon)
         phrases = extract_phrases_with_spacy(input_document)
-        structure_score = analyze_contract_structure(input_document)
+        structure_analysis = analyze_contract_structure(input_document)
         readability_score = analyze_readability(input_document)
         
         final_score = calculate_final_score(
             similarity_score,
             jargon_density,
             len(phrases),
-            structure_score,
+            structure_analysis,
             readability_score
         )
 
+        # Normalize jargon_density for display (lower is better)
+        normalized_jargon_score = max(0, 100 - jargon_density * 2)
+
+        # Create recommendations based on scores
+        recommendations = []
+        
+        # Basic metrics recommendations
+        if similarity_score < 70:
+            recommendations.append("Consider reviewing similar legal documents to improve consistency")
+        if normalized_jargon_score < 70:
+            recommendations.append("The contract contains high legal jargon density. Consider simplifying the language")
+        if readability_score < 70:
+            recommendations.append("The text could be more readable. Consider using shorter sentences and simpler language")
+
+        # Legal parameter recommendations
+        for param, details in structure_analysis['details'].items():
+            if details['score'] < 70:
+                if param == 'assent_mutuality':
+                    recommendations.append("Strengthen the expression of mutual assent and clear offer/acceptance")
+                elif param == 'definiteness_completeness':
+                    recommendations.append("Add more specific details about essential terms (price, duration, scope, duties)")
+                elif param == 'consideration_bargain':
+                    recommendations.append("Clarify the exchange of value or consideration between parties")
+                elif param == 'integration_consistency':
+                    recommendations.append("Consider adding a clear integration/merger clause")
+                elif param == 'modification_termination':
+                    recommendations.append("Add clear provisions for contract modification and termination")
+                elif param == 'risk_remedies':
+                    recommendations.append("Include specific remedies and dispute resolution procedures")
+                elif param == 'compliance_standards':
+                    recommendations.append("Strengthen compliance with legal standards and regulations")
+                elif param == 'language_clarity':
+                    recommendations.append("Improve clarity by defining key terms and using consistent language")
+
         return jsonify({
-            'similarity_score': round(similarity_score, 2),
-            'jargon_density': round(jargon_density, 2),
-            'key_phrases': phrases,
-            'structure_score': round(structure_score, 2),
-            'readability_score': round(readability_score, 2),
-            'final_score': round(final_score, 2)
+            'score': round(final_score, 2),
+            'analysis': {
+                'similarity': round(similarity_score, 2),
+                'jargon_density': round(normalized_jargon_score, 2),
+                'readability': round(readability_score, 2),
+                'legal_parameters': structure_analysis['details'],
+                'key_phrases': phrases
+            },
+            'recommendations': recommendations
         })
 
     except Exception as e:

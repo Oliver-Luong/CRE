@@ -4,6 +4,9 @@ import os
 from . import main
 from app.analyzer import analyze_document
 import logging
+import nltk
+import spacy
+import sys
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -20,6 +23,7 @@ def index():
 @main.route('/analyze', methods=['POST'])
 def analyze():
     try:
+        logger.info("Starting analysis request")
         if 'file' in request.files:
             file = request.files['file']
             if file and allowed_file(file.filename):
@@ -35,22 +39,79 @@ def analyze():
                 logger.warning("Invalid file type or no file provided")
                 return jsonify({'error': 'Invalid file type'}), 400
         else:
-            text = request.json.get('text', '')
+            data = request.get_json()
+            if not data:
+                logger.error("No JSON data in request")
+                return jsonify({'error': 'No data provided'}), 400
+                
+            text = data.get('text', '')
+            if not text or not isinstance(text, str):
+                logger.error(f"Invalid text input: {type(text)}")
+                return jsonify({'error': 'Invalid text input'}), 400
+                
             if not text.strip():
-                logger.warning("No text provided in request")
+                logger.warning("Empty text provided")
                 return jsonify({'error': 'No text provided'}), 400
-            logger.info("Received text input for analysis")
+            
+            logger.info(f"Received text input for analysis (length: {len(text)})")
 
         logger.info("Starting document analysis")
-        results = analyze_document(text)
-        logger.info("Analysis completed successfully")
-        return jsonify(results)
+        try:
+            results = analyze_document(text)
+            logger.info("Analysis completed successfully")
+            return jsonify(results)
+        except Exception as analysis_error:
+            logger.error(f"Analysis error: {str(analysis_error)}", exc_info=True)
+            error_msg = str(analysis_error)
+            if "Analysis failed:" in error_msg:
+                error_msg = error_msg.split("Analysis failed:", 1)[1].strip()
+            return jsonify({
+                'error': error_msg,
+                'details': 'Please check your input and try again.'
+            }), 500
 
     except Exception as e:
-        logger.error(f"Error during analysis: {str(e)}", exc_info=True)
+        logger.error(f"Request processing error: {str(e)}", exc_info=True)
         return jsonify({
-            'error': 'Failed to analyze contract. Please try again.',
+            'error': 'Failed to process request',
             'details': str(e)
+        }), 500
+
+@main.route('/system-status')
+def system_status():
+    try:
+        # Test NLTK
+        nltk_status = {}
+        for resource in ['punkt', 'stopwords', 'averaged_perceptron_tagger']:
+            try:
+                nltk.data.find(f'tokenizers/{resource}')
+                nltk_status[resource] = "Available"
+            except LookupError:
+                nltk_status[resource] = "Missing"
+
+        # Test spaCy
+        try:
+            nlp = spacy.load('en_core_web_sm')
+            spacy_status = "Available"
+            test_text = "This is a test sentence."
+            doc = nlp(test_text)
+            spacy_test = "Working"
+        except Exception as e:
+            spacy_status = f"Error: {str(e)}"
+            spacy_test = "Failed"
+
+        return jsonify({
+            'status': 'ok',
+            'nltk_resources': nltk_status,
+            'spacy_model': spacy_status,
+            'spacy_test': spacy_test,
+            'python_version': sys.version,
+            'upload_folder': os.path.exists(current_app.config['UPLOAD_FOLDER'])
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'error': str(e)
         }), 500
 
 @main.route('/download/<filename>')
