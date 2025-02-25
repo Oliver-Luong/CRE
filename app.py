@@ -4,6 +4,7 @@ from Script import (
     extract_phrases_with_spacy, analyze_contract_structure,
     analyze_readability, calculate_final_score, legal_jargon
 )
+import os
 
 app = Flask(__name__)
 
@@ -13,6 +14,10 @@ repository = [
     "An affidavit was presented in court to support the case.",
     "Jurisdiction is determined by the geographical boundaries of the court."
 ]
+
+@app.route('/health')
+def health_check():
+    return jsonify({"status": "healthy"}), 200
 
 @app.route('/')
 def index():
@@ -93,4 +98,5 @@ def analyze():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
