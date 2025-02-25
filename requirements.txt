@@ -6,3 +6,5 @@ numpy==1.26.4
 gunicorn==21.2.0
 python-dotenv==1.0.1
 waitress==3.0.2
+paste==3.7.1
+Paste==3.7.1
