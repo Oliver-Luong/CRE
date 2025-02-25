@@ -5,6 +5,9 @@ set -o errexit
 # Use pip caching
 export PIP_CACHE_DIR="/root/.cache/pip"
 
+# Upgrade pip first
+python -m pip install --upgrade pip
+
 # Install Python dependencies with optimizations
 pip install --no-cache-dir --compile -r requirements.txt
 
