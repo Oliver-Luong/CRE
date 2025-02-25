@@ -8,10 +8,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const analysisCategories = document.getElementById('analysisCategories');
     const recommendationsList = document.getElementById('recommendationsList');
     const exportBtn = document.getElementById('exportResults');
+    const errorAlert = document.createElement('div');
+    errorAlert.className = 'alert alert-danger alert-dismissible fade show';
+    errorAlert.style.display = 'none';
+    resultsSection.parentNode.insertBefore(errorAlert, resultsSection);
 
     // Clear button handler
     clearBtn.addEventListener('click', () => {
         contractText.value = '';
+        errorAlert.style.display = 'none';
     });
 
     // Paste button handler
@@ -19,24 +24,35 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const text = await navigator.clipboard.readText();
             contractText.value = text;
+            errorAlert.style.display = 'none';
         } catch (err) {
             console.error('Failed to read clipboard:', err);
-            alert('Unable to paste from clipboard. Please paste manually.');
+            showError('Unable to paste from clipboard. Please paste manually.');
         }
     });
+
+    function showError(message) {
+        errorAlert.innerHTML = `
+            <strong>Error:</strong> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        errorAlert.style.display = 'block';
+        resultsSection.style.display = 'none';
+    }
 
     // Analyze button handler
     analyzeBtn.addEventListener('click', async () => {
         const text = contractText.value.trim();
         
         if (!text) {
-            alert('Please enter or paste contract text for analysis.');
+            showError('Please enter or paste contract text for analysis.');
             return;
         }
 
         // Show loading state
         analyzeBtn.disabled = true;
         analyzeBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Analyzing...';
+        errorAlert.style.display = 'none';
 
         try {
             const response = await fetch('/analyze', {
@@ -44,121 +60,111 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ original_text: text })
+                body: JSON.stringify({ text: text })
             });
 
             const data = await response.json();
 
-            if (response.ok) {
-                displayResults(data);
-            } else {
-                throw new Error(data.error || 'Analysis failed');
+            if (!response.ok) {
+                throw new Error(data.error || data.details || 'Failed to analyze contract');
             }
-        } catch (err) {
-            console.error('Analysis error:', err);
-            alert('Failed to analyze contract. Please try again.');
+
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
+            displayResults(data);
+            resultsSection.style.display = 'block';
+            exportBtn.style.display = 'block';
+
+        } catch (error) {
+            console.error('Analysis error:', error);
+            showError(error.message || 'Failed to analyze contract. Please try again.');
         } finally {
             // Reset button state
             analyzeBtn.disabled = false;
-            analyzeBtn.innerHTML = '<i class="bi bi-search"></i> Analyze Contract';
+            analyzeBtn.innerHTML = 'Analyze Contract';
         }
     });
 
-    // Export button handler
+    function displayResults(data) {
+        // Display overall score
+        overallScore.textContent = `${data.score}`;
+        overallScore.className = `display-1 ${getScoreClass(data.score)}`;
+
+        // Clear previous results
+        analysisCategories.innerHTML = '';
+        recommendationsList.innerHTML = '';
+
+        // Display category scores and details
+        for (const [category, analysis] of Object.entries(data.analysis)) {
+            const categoryDiv = document.createElement('div');
+            categoryDiv.className = 'mb-4';
+            categoryDiv.innerHTML = `
+                <h4>${category}</h4>
+                <div class="d-flex align-items-center mb-2">
+                    <div class="score-badge ${getScoreClass(analysis.score)}">${analysis.score}</div>
+                    <div class="ms-3">
+                        <p class="mb-1"><strong>Details:</strong> ${analysis.details}</p>
+                        <p class="mb-0"><strong>Key Findings:</strong> ${JSON.stringify(analysis.findings, null, 2)}</p>
+                    </div>
+                </div>
+            `;
+            analysisCategories.appendChild(categoryDiv);
+        }
+
+        // Display recommendations
+        data.recommendations.forEach(rec => {
+            const li = document.createElement('li');
+            li.className = 'list-group-item';
+            li.textContent = rec;
+            recommendationsList.appendChild(li);
+        });
+    }
+
+    function getScoreClass(score) {
+        if (score >= 80) return 'text-success';
+        if (score >= 60) return 'text-warning';
+        return 'text-danger';
+    }
+
+    // Export functionality
     exportBtn.addEventListener('click', () => {
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const filename = `contract-analysis-${timestamp}.txt`;
-        
-        // Gather all analysis data
-        const analysisText = generateExportText();
-        
-        // Create and trigger download
-        const blob = new Blob([analysisText], { type: 'text/plain' });
+        const text = generateExportText();
+        const blob = new Blob([text], { type: 'text/plain' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.style.display = 'none';
         a.href = url;
-        a.download = filename;
-        
+        a.download = 'contract_analysis.txt';
         document.body.appendChild(a);
         a.click();
-        
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
     });
 
-    // Helper function to display results
-    function displayResults(data) {
-        // Display overall score
-        overallScore.textContent = Math.round(data.score);
-        
-        // Display category scores
-        analysisCategories.innerHTML = '';
-        Object.entries(data.analysis).forEach(([category, details]) => {
-            const scoreClass = getScoreClass(details.score);
-            const categoryHtml = `
-                <div class="col-md-6">
-                    <div class="analysis-category">
-                        <div class="category-header">
-                            <span class="category-name">${category}</span>
-                            <span class="category-score">${Math.round(details.score)}%</span>
-                        </div>
-                        <div class="score-bar">
-                            <div class="score-fill ${scoreClass}" style="width: ${details.score}%"></div>
-                        </div>
-                        <div class="category-details">
-                            <small>${details.details}</small>
-                        </div>
-                    </div>
-                </div>
-            `;
-            analysisCategories.innerHTML += categoryHtml;
-        });
-
-        // Display recommendations
-        recommendationsList.innerHTML = '';
-        data.recommendations.forEach(rec => {
-            recommendationsList.innerHTML += `<li>${rec}</li>`;
-        });
-
-        // Show results section
-        resultsSection.style.display = 'block';
-        resultsSection.scrollIntoView({ behavior: 'smooth' });
-    }
-
-    // Helper function to determine score class
-    function getScoreClass(score) {
-        if (score >= 80) return 'score-high';
-        if (score >= 60) return 'score-medium';
-        return 'score-low';
-    }
-
-    // Helper function to generate export text
     function generateExportText() {
-        const sections = [];
+        let text = 'Contract Analysis Report\n';
+        text += '=======================\n\n';
+        text += `Overall Score: ${overallScore.textContent}\n\n`;
         
-        // Overall Score
-        sections.push(`LEGAL CONTRACT ANALYSIS REPORT\n${'='.repeat(30)}\n`);
-        sections.push(`Overall Score: ${overallScore.textContent}%\n`);
+        text += 'Category Analysis\n';
+        text += '----------------\n';
+        for (const categoryDiv of analysisCategories.children) {
+            const title = categoryDiv.querySelector('h4').textContent;
+            const score = categoryDiv.querySelector('.score-badge').textContent;
+            const details = categoryDiv.querySelector('p').textContent;
+            
+            text += `\n${title}\n`;
+            text += `Score: ${score}\n`;
+            text += `${details}\n`;
+        }
         
-        // Category Scores
-        sections.push('\nDETAILED ANALYSIS\n' + '-'.repeat(20));
-        document.querySelectorAll('.analysis-category').forEach(category => {
-            const name = category.querySelector('.category-name').textContent;
-            const score = category.querySelector('.category-score').textContent;
-            const details = category.querySelector('.category-details small').textContent;
-            sections.push(`\n${name}\nScore: ${score}\n${details}`);
-        });
+        text += '\nRecommendations\n';
+        text += '---------------\n';
+        for (const rec of recommendationsList.children) {
+            text += `- ${rec.textContent}\n`;
+        }
         
-        // Recommendations
-        sections.push('\nRECOMMENDATIONS\n' + '-'.repeat(20));
-        document.querySelectorAll('.recommendations-list li').forEach(rec => {
-            sections.push(`• ${rec.textContent}`);
-        });
-        
-        // Timestamp
-        sections.push(`\n\nReport generated on: ${new Date().toLocaleString()}`);
-        
-        return sections.join('\n');
+        return text;
     }
 });

@@ -12,9 +12,13 @@ def create_app(config_name='default'):
                 static_folder=static_dir)
     
     app.config.from_object(config[config_name])
+    config[config_name].init_app(app)  # Initialize the application with config-specific setup
 
     # Register blueprints
     from app.main import main as main_blueprint
     app.register_blueprint(main_blueprint)
+
+    # Ensure the upload directory exists
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
     return app
