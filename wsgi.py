@@ -101,23 +101,4 @@ def analyze_contract():
 if __name__ == '__main__':
     # Get port from environment variable (for Render)
     port = int(os.environ.get('PORT', 5000))
-    
-    # Use production WSGI server with optimized settings
-    from waitress import serve
-    
-    # Calculate optimal number of threads based on CPU cores
-    cpu_count = multiprocessing.cpu_count()
-    thread_count = cpu_count * 2  # Rule of thumb: 2 threads per CPU core
-    
-    logger.info(f"Starting server on port {port} with {thread_count} threads (CPU cores: {cpu_count})")
-    serve(
-        app,
-        host='0.0.0.0',
-        port=port,
-        threads=thread_count,
-        url_scheme='http',
-        channel_timeout=30,
-        cleanup_interval=30,
-        connection_limit=1024,
-        max_request_body_size=1024 * 1024 * 10  # 10MB limit
-    )
+    app.run(host='0.0.0.0', port=port)
