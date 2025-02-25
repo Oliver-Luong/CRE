@@ -12,6 +12,11 @@ class Config:
     STATIC_FOLDER = 'static'
     TEMPLATES_FOLDER = 'templates'
 
+    @staticmethod
+    def init_app(app):
+        # Ensure upload directory exists
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
 class DevelopmentConfig(Config):
     FLASK_ENV = 'development'
     DEBUG = True

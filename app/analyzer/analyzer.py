@@ -6,6 +6,10 @@ from sklearn.metrics.pairwise import cosine_similarity
 import spacy
 import string
 import numpy as np
+import logging
+
+# Initialize logger
+logger = logging.getLogger(__name__)
 
 # Ensure NLTK resources are downloaded
 nltk.download('punkt')
@@ -677,6 +681,12 @@ def analyze_document(text):
     Returns a comprehensive analysis with scores and suggestions.
     """
     try:
+        if not text or not isinstance(text, str):
+            raise ValueError("Invalid input: text must be a non-empty string")
+
+        # Log input text length
+        logger.info(f"Analyzing document of length: {len(text)}")
+            
         # Perform all analyses
         analyses = {
             'Assent and Mutuality': analyze_assent_and_mutuality(text),
@@ -728,14 +738,12 @@ def analyze_document(text):
         # Add recommendations
         response['recommendations'] = generate_recommendations(analyses)
         
+        logger.info("Analysis completed successfully")
         return response
         
     except Exception as e:
-        print(f"Analysis error: {str(e)}")
-        return {
-            'error': str(e),
-            'status': 'failed'
-        }
+        logger.error(f"Analysis error: {str(e)}", exc_info=True)
+        raise Exception(f"Analysis failed: {str(e)}")
 
 def get_analysis_details(category, analysis):
     """Helper function to get human-readable details for each category"""
